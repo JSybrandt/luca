@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "luca"
+version = "0.1.0"
+description = "A language thats easy to write, implement, and extend. What is Lua was better?"
+authors = ["Justin Sybrandt"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[tool.poetry.scripts]
+luca = "luca:main"
+
+# [tool.pytest.ini_options]
+# pythonpath = "luca"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
