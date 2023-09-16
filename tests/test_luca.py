@@ -600,3 +600,24 @@ def test_parse_add_values_inside_objects():
     tokens = luca.LucaLexer().tokenize(program)
     parser = luca.LucaParser()
     assert parser.parse(tokens) == luca.LucaNumber(3)
+
+
+def test_parse_set_value_in_object():
+    program = """
+        a = { c = 1 }
+        a.b = 2
+        a.b + a.c
+    """
+    tokens = luca.LucaLexer().tokenize(program)
+    parser = luca.LucaParser()
+    assert parser.parse(tokens) == luca.LucaNumber(3)
+
+
+def test_parse_set_nested_value_disallowed():
+    program = """
+        a = {}
+        a.b.c = 1
+    """
+    tokens = luca.LucaLexer().tokenize(program)
+    with pytest.raises(ValueError):
+        luca.LucaParser().parse(tokens)

@@ -119,7 +119,7 @@ class LucaScope:
         self.names = {}
         self.parent = parent
 
-    def add(self, name: str, value: LucaValue):
+    def set(self, name: str, value: LucaValue):
         self.names[name] = value
 
     def get(self, name: str) -> LucaValue:
@@ -131,6 +131,18 @@ class LucaScope:
 
     def __str__(self):
         return "{" + ",".join(f"{n}:{v}" for n, v in self.names.items()) + "}"
+
+
+class LucaReference:
+    def __init__(self, name: str, parent_scope: LucaScope):
+        self.parent_scope = parent_scope
+        self.name = name
+
+    def get(self):
+        return self.parent_scope.get(self.name)
+
+    def set(self, value: LucaValue):
+        return self.parent_scope.set(self.name, value)
 
 
 class LucaObject(LucaValue):
@@ -271,15 +283,6 @@ class LucaParser(sly.Parser):
     def stmt(self, p):
         return p.expr
 
-    @_("NAME ASSIGN expr")
-    def expr(self, p):
-        self.add(p.NAME, p.expr)
-        return p.expr
-
-    @_("NAME")
-    def expr(self, p):
-        return self.get(p.NAME)
-
     @_('expr "+" expr')
     def expr(self, p):
         return p.expr0 + p.expr1
@@ -351,6 +354,20 @@ class LucaParser(sly.Parser):
     def new_scope(self, p):
         self.push_scope()
 
-    @_(' expr "." NAME')
+    @_('ref "." NAME')
+    def ref(self, p):
+        # Assumes that 'ref' is a reference to an object.
+        return LucaReference(p.NAME, p.ref.get().raw_value)
+
+    @_("NAME")
+    def ref(self, p):
+        return LucaReference(p.NAME, self.current_scope())
+
+    @_("ref")
     def expr(self, p):
-        return p.expr.get(p.NAME)
+        return p.ref.get()
+
+    @_("ref ASSIGN expr")
+    def expr(self, p):
+        p.ref.set(p.expr)
+        return p.expr
