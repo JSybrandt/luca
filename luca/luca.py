@@ -114,8 +114,9 @@ class LucaBool(LucaValue):
         return LucaBool(not self.raw_value)
 
 
-class LucaScope:
+class LucaObject(LucaValue):
     def __init__(self, parent=None):
+        super().__init__(LucaType.OBJECT, None)
         self.names = {}
         self.parent = parent
 
@@ -130,11 +131,12 @@ class LucaScope:
         return self.names[name]
 
     def __str__(self):
-        return "{" + ",".join(f"{n}:{v}" for n, v in self.names.items()) + "}"
+        contents = "{" + ",".join(f"{n}:{v}" for n, v in self.names.items()) + "}"
+        return f"{contents}({self.luca_type})"
 
 
 class LucaReference:
-    def __init__(self, name: str, parent_scope: LucaScope):
+    def __init__(self, name: str, parent_scope: LucaObject):
         self.parent_scope = parent_scope
         self.name = name
 
@@ -143,14 +145,6 @@ class LucaReference:
 
     def set(self, value: LucaValue):
         return self.parent_scope.set(self.name, value)
-
-
-class LucaObject(LucaValue):
-    def __init__(self, raw_value: LucaScope):
-        super().__init__(LucaType.OBJECT, raw_value)
-
-    def get(self, name: str):
-        return self.raw_value.get(name)
 
 
 class LucaLexer(sly.Lexer):
@@ -236,7 +230,7 @@ class LucaParser(sly.Parser):
 
     def __init__(self):
         super().__init__()
-        self.scope_stack = [LucaScope()]
+        self.scope_stack = [LucaObject()]
 
     def get(self, name: str):
         return self.current_scope().get(name)
@@ -244,11 +238,11 @@ class LucaParser(sly.Parser):
     def add(self, name: str, value: LucaValue):
         return self.current_scope().add(name, value)
 
-    def current_scope(self) -> LucaScope:
+    def current_scope(self) -> LucaObject:
         return self.scope_stack[-1]
 
     def push_scope(self):
-        self.scope_stack.append(LucaScope(self.current_scope()))
+        self.scope_stack.append(LucaObject(self.current_scope()))
 
     def pop_scope(self):
         self.scope_stack.pop()
@@ -346,7 +340,7 @@ class LucaParser(sly.Parser):
 
     @_('"{" new_scope block "}"', '"{" new_scope "}"')
     def expr(self, p):
-        obj = LucaObject(self.current_scope())
+        obj = self.current_scope()
         self.pop_scope()
         return obj
 
@@ -357,7 +351,7 @@ class LucaParser(sly.Parser):
     @_('ref "." NAME')
     def ref(self, p):
         # Assumes that 'ref' is a reference to an object.
-        return LucaReference(p.NAME, p.ref.get().raw_value)
+        return LucaReference(p.NAME, p.ref.get())
 
     @_("NAME")
     def ref(self, p):
